@@ -1,13 +1,64 @@
 var chess=document.getElementById('chess');
 var context=chess.getContext('2d');
 var me=true;
+var over=false;
 var chessBoard=[];
+var wins=[];                //赢法数组---三维数组
+var mywin=[];               //统计赢法的数组----一维数组
+var computerWin=[];   
 for(var i=0;i<15;i++){
 	chessBoard[i]=[];
 	for(var j=0;j<15;j++){
-		chessBoard[i][j]=0;
+		chessBoard[i][j]=0;     //没有下棋的时候，初始状态
 	}
 }	
+
+for(var i=0;i<15;i++){
+	wins[i]=[];
+	for(var j=0;j<15;j++){
+		wins[i][j]=[];
+	}
+}
+
+var count=0;
+for(var i=0;i<15;i++){
+	for(var j=0;j<11;j++){
+		for(var k=0;k<5;k++){
+			wins[i][j+k][count]=true;
+		}
+		count++;
+	}
+}                           //所有纵向赢法  165
+for(var i=0;i<11;i++){
+	for(var j=0;j<15;j++){
+		for(var k=0;k<5;k++){
+			//wins[i+k][j][count]=true;
+			wins[i+k][j][count]=true;
+		}
+		count++;           //横向
+	}
+}
+for(var i=0;i<11;i++){
+	for(var j=0;j<11;j++){
+		for(var k=0;k<5;k++){
+			wins[i+k][j+k][count]=true;
+		}
+		count++;
+	}
+}                     //斜线
+for(var i=0;i<11;i++){
+	for(var j=14;j>3;j--){
+		for(var k=0;k<5;k++){
+			wins[i+k][j-k][count]=true;
+		}
+		count++;
+	}
+}                    //反斜线
+console.log(count);
+for(i=0;i<count;i++){
+	mywin[i]=0;
+	computerWin[i]=0;
+}
 
 context.strokeStyle="#BFBFBF";
 
@@ -47,18 +98,112 @@ var oneStep=function(i,j,me){
 	context.fill();
 }
 chess.onclick=function(e){
+	if(over){
+		return;
+	}
+	if(!me){
+		return;
+	}
 	var x=e.offsetX;
 	var y=e.offsetY;
 	var i=Math.floor(x / 30);
 	var j=Math.floor(y / 30);
-	if(chessBoard[i][j]==0){
+	if(chessBoard[i][j]==0){           //没有下棋
 		oneStep(i,j,me);
-
-		if(me){
-			chessBoard[i][j]=1;
-		}else{
-			chessBoard[i][j]=2;	
+		chessBoard[i][j]=1;        //下黑子
+			
+		for(var k=0;k<count;k++){
+			if(wins[i][j][k]){
+				mywin[k]++;
+				computerWin[k]=6;
+				if(mywin[k]==5){
+					window.alert("你已经赢了");
+					over=true;
+				}
+			}
 		}
-		me=!me;
+		if(!over){
+			me=!me;
+			computerAI();
+		}
  }
+}
+var computerAI=function(){
+	var myScore=[];           //我的分数-----分数越大，就越接近赢
+	var computerScore=[];     //电脑
+	var max=0;                //中间值----最大分数
+	var u=0,v=0;              //电脑下棋的位置（索引）
+	for(var i=0;i<15;i++){
+		myScore[i]=[];
+		computerScore[i]=[];
+		for(var j=0;j<15;j++){
+			myScore[i][j]=0;
+			computerScore[i][j]=0;
+	    }
+    }
+    for(var i=0;i<15;i++){
+    	for(var j=0;j<15;j++){                             //每次循环之前，进行扫描棋盘
+    		if(chessBoard[i][j]==0){                       // 判断棋盘该位置没有棋子
+    			for(var k=0;k<count;k++){                  //扫描赢法数组，判断属于哪一种赢法
+    				if(wins[i][j][k]){
+    					if(mywin[k]==1){
+    						myScore[i][j]+=200;
+    					}else if(mywin[k]==2){
+    						myScore[i][j]+=400;
+    					}else if(mywin[k]==3){
+    						myScore[i][j]+=2000;
+    					}else if(mywin[k]==4){
+    						myScore[i][j]+=10000;
+    					}
+
+    					if(computerWin[k]==1){
+    						computerScore[i][j]+=220;
+    					}else if(computerWin[k]==2){
+    						computerScore[i][j]+=420;
+    					}else if(computerWin[k]==3){
+    						computerScore[i][j]+=2100;
+    					}else if(computerWin[k]==4){
+    						computerScore[i][j]+=20000;
+    					}
+    				}    				
+    			}
+    			if(myScore[i][j]>max){
+    				max=myScore[i][j];
+    				u=i;
+    				v=j;                                           //防守代码
+    			}else if(myScore[i][j]==max){
+    				if(computerScore[i][j]>computerScore[u][v]){
+    					u=i;
+    					v=j;
+    				}
+    			}
+
+    			if(computerScore[i][j]>max){
+    				max=computerScore[i][j];
+    				u=i;
+    				v=j;                                        //进攻代码
+    			}else if(computerScore[i][j]==max){
+    				if(myScore[i][j]>myScore[u][v]){
+    					u=i;
+    					v=j;
+    				}
+    			}
+    		}
+    	}
+    }
+    oneStep(u,v,false);
+    chessBoard[u][v]=2;
+    for(var k=0;k<count;k++){
+		if(wins[u][v][k]){
+			computerWin[k]++;
+			mywin[k]=6;
+			if(computerWin[k]==5){
+			window.alert("计算机赢了");
+			over=true;
+			}
+		}
+	}
+	if(!over){
+		me=!me;
+	}
 }
